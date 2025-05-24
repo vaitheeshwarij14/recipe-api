@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <title>Recipes</title>
   <style>
-    body { font-family: Arial, sans-serif; }
-    table, th, td { border: 1px solid black; border-collapse: collapse; }
-    th, td { padding: 8px; text-align: left; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table, th, td { border: 1px solid black; border-collapse: collapse; width: 100%; }
+    th, td { padding: 8px; text-align: left; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .star { color: gold; }
 
-    /* Drawer styles */
     .drawer {
       position: fixed;
       top: 0;
@@ -21,36 +20,27 @@
       padding: 20px;
       transition: right 0.3s ease-in-out;
       overflow-y: auto;
-      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
     }
 
-    .drawer.open {
-      right: 0;
-    }
-
-    .drawer h2 {
-      margin-top: 0;
-    }
-
-    .close-btn {
-      float: right;
-      font-size: 20px;
-      cursor: pointer;
-      color: red;
-    }
-
-    .section-title {
-      font-weight: bold;
-      margin-top: 20px;
-    }
-
-    .nutrient-table td {
-      padding: 4px;
-    }
+    .drawer.open { right: 0; }
+    .close-btn { float: right; font-size: 20px; cursor: pointer; color: red; }
+    .section-title { font-weight: bold; margin-top: 20px; }
+    .nutrient-table td { padding: 4px; }
+    .filters input { margin: 5px; padding: 4px; width: 150px; }
+    .pagination { margin-top: 10px; }
   </style>
 </head>
 <body>
   <h2>Recipe List</h2>
+
+  <div class="filters">
+    <input type="text" id="filter-title" placeholder="Title">
+    <input type="text" id="filter-cuisine" placeholder="Cuisine">
+    <input type="number" id="filter-rating" placeholder="Min Rating">
+    <input type="number" id="filter-time" placeholder="Max Total Time">
+    <input type="number" id="filter-calories" placeholder="Max Calories">
+    <button onclick="applyFilters()">Search</button>
+  </div>
 
   <table id="recipe-table">
     <thead>
@@ -64,6 +54,21 @@
     </thead>
     <tbody></tbody>
   </table>
+
+  <div id="fallback-message" style="display:none; color: red; margin-top: 10px;">No results found.</div>
+
+  <div class="pagination">
+    <label for="limit">Recipes per page:</label>
+    <select id="limit" onchange="loadRecipes()">
+      <option value="15">15</option>
+      <option value="20">20</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+    </select>
+    <button onclick="prevPage()">Prev</button>
+    <span id="page-num">1</span>
+    <button onclick="nextPage()">Next</button>
+  </div>
 
   <!-- Drawer -->
   <div class="drawer" id="recipe-drawer">
@@ -85,23 +90,69 @@
   </div>
 
   <script>
-    async function loadRecipes() {
-      const response = await fetch("/api/recipes?page=1&limit=10");
-      const data = await response.json();
-      const table = document.getElementById("recipe-table").getElementsByTagName("tbody")[0];
-      table.innerHTML = "";
+    let page = 1;
 
-      data.forEach((recipe, index) => {
+    function buildSearchURL() {
+      const title = document.getElementById("filter-title").value;
+      const cuisine = document.getElementById("filter-cuisine").value;
+      const rating = document.getElementById("filter-rating").value;
+      const total_time = document.getElementById("filter-time").value;
+      const calories = document.getElementById("filter-calories").value;
+
+      const params = new URLSearchParams();
+      if (title) params.append("title", title);
+      if (cuisine) params.append("cuisine", cuisine);
+      if (rating) params.append("rating", rating);
+      if (total_time) params.append("total_time", total_time);
+      if (calories) params.append("calories", calories);
+
+      return `/api/recipes/search?${params.toString()}`;
+    }
+
+    async function loadRecipes() {
+      const limit = document.getElementById("limit").value;
+      const url = `/api/recipes?page=${page}&limit=${limit}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      renderTable(data);
+    }
+
+    async function applyFilters() {
+      const response = await fetch(buildSearchURL());
+      const data = await response.json();
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const table = document.getElementById("recipe-table").getElementsByTagName("tbody")[0];
+      const fallback = document.getElementById("fallback-message");
+
+      table.innerHTML = "";
+      fallback.style.display = data.length === 0 ? "block" : "none";
+
+      data.forEach(recipe => {
         let row = table.insertRow();
         row.insertCell(0).innerText = recipe.title;
         row.insertCell(1).innerText = recipe.cuisine;
         row.insertCell(2).innerHTML = '★'.repeat(Math.floor(recipe.rating || 0));
         row.insertCell(3).innerText = recipe.total_time || "-";
         row.insertCell(4).innerText = recipe.serves || "-";
-
-        // Add click event to open drawer
         row.onclick = () => showDetails(recipe);
       });
+    }
+
+    function prevPage() {
+      if (page > 1) {
+        page--;
+        document.getElementById("page-num").innerText = page;
+        loadRecipes();
+      }
+    }
+
+    function nextPage() {
+      page++;
+      document.getElementById("page-num").innerText = page;
+      loadRecipes();
     }
 
     function showDetails(recipe) {
@@ -111,7 +162,6 @@
       document.getElementById("drawer-prep-time").innerText = recipe.prep_time || "-";
       document.getElementById("drawer-cook-time").innerText = recipe.cook_time || "-";
 
-      // Render nutrient data
       const nutrients = recipe.nutrients || {};
       const nutrientTable = document.getElementById("nutrient-rows");
       nutrientTable.innerHTML = "";
@@ -132,7 +182,6 @@
         nutrientTable.appendChild(row);
       });
 
-      // Show drawer
       document.getElementById("recipe-drawer").classList.add("open");
     }
 
