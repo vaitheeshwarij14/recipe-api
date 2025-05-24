@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recipes</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table, th, td { border: 1px solid black; border-collapse: collapse; }
+    th, td { padding: 8px; text-align: left; }
+    .star { color: gold; }
+
+    /* Drawer styles */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100%;
+      background: #f9f9f9;
+      border-left: 2px solid #ccc;
+      padding: 20px;
+      transition: right 0.3s ease-in-out;
+      overflow-y: auto;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    .drawer.open {
+      right: 0;
+    }
+
+    .drawer h2 {
+      margin-top: 0;
+    }
+
+    .close-btn {
+      float: right;
+      font-size: 20px;
+      cursor: pointer;
+      color: red;
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    .nutrient-table td {
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Recipe List</h2>
+
+  <table id="recipe-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Cuisine</th>
+        <th>Rating</th>
+        <th>Total Time</th>
+        <th>Serves</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Drawer -->
+  <div class="drawer" id="recipe-drawer">
+    <span class="close-btn" onclick="closeDrawer()">×</span>
+    <h2 id="drawer-title"></h2>
+    <div><b>Description:</b> <span id="drawer-description"></span></div>
+    <div><b>Total Time:</b> <span id="drawer-total-time"></span>
+      <button onclick="toggleTimes()">⏱️ Expand</button>
+      <div id="drawer-times" style="display:none;">
+        <div>Prep Time: <span id="drawer-prep-time"></span></div>
+        <div>Cook Time: <span id="drawer-cook-time"></span></div>
+      </div>
+    </div>
+
+    <div class="section-title">Nutrients</div>
+    <table class="nutrient-table">
+      <tbody id="nutrient-rows"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadRecipes() {
+      const response = await fetch("/api/recipes?page=1&limit=10");
+      const data = await response.json();
+      const table = document.getElementById("recipe-table").getElementsByTagName("tbody")[0];
+      table.innerHTML = "";
+
+      data.forEach((recipe, index) => {
+        let row = table.insertRow();
+        row.insertCell(0).innerText = recipe.title;
+        row.insertCell(1).innerText = recipe.cuisine;
+        row.insertCell(2).innerHTML = '★'.repeat(Math.floor(recipe.rating || 0));
+        row.insertCell(3).innerText = recipe.total_time || "-";
+        row.insertCell(4).innerText = recipe.serves || "-";
+
+        // Add click event to open drawer
+        row.onclick = () => showDetails(recipe);
+      });
+    }
+
+    function showDetails(recipe) {
+      document.getElementById("drawer-title").innerText = `${recipe.title} (${recipe.cuisine})`;
+      document.getElementById("drawer-description").innerText = recipe.description || "-";
+      document.getElementById("drawer-total-time").innerText = recipe.total_time || "-";
+      document.getElementById("drawer-prep-time").innerText = recipe.prep_time || "-";
+      document.getElementById("drawer-cook-time").innerText = recipe.cook_time || "-";
+
+      // Render nutrient data
+      const nutrients = recipe.nutrients || {};
+      const nutrientTable = document.getElementById("nutrient-rows");
+      nutrientTable.innerHTML = "";
+
+      const fields = [
+        "calories", "carbohydrateContent", "cholesterolContent", "fiberContent",
+        "proteinContent", "saturatedFatContent", "sodiumContent", "sugarContent", "fatContent"
+      ];
+
+      fields.forEach(field => {
+        let row = document.createElement("tr");
+        let keyCell = document.createElement("td");
+        keyCell.textContent = field;
+        let valueCell = document.createElement("td");
+        valueCell.textContent = nutrients[field] || "-";
+        row.appendChild(keyCell);
+        row.appendChild(valueCell);
+        nutrientTable.appendChild(row);
+      });
+
+      // Show drawer
+      document.getElementById("recipe-drawer").classList.add("open");
+    }
+
+    function closeDrawer() {
+      document.getElementById("recipe-drawer").classList.remove("open");
+    }
+
+    function toggleTimes() {
+      const section = document.getElementById("drawer-times");
+      section.style.display = section.style.display === "none" ? "block" : "none";
+    }
+
+    loadRecipes();
+  </script>
+</body>
+</html>
