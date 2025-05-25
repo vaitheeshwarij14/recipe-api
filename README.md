@@ -19,10 +19,8 @@ This is a simple FastAPI backend for managing and filtering recipes. It supports
 ### 🔹 Filter Page
 ![Filter Page](images/filter_page.png)
 
-### 🔹 Description (Cake)
-![Description - Cake](images/description_cake.png)
-
-> 💡 Make sure to place your screenshot images inside a folder named `images/` in the root of your repo for them to show up properly.
+### 🔹 Description (Cookie)
+![Description - Cake](images/description_cookie.png)
 
 ---
 
