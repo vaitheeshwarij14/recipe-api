@@ -11,11 +11,8 @@ from schema import RecipeBase
 import os
 
 app = FastAPI()
-
-# Serve HTML + static files from /static folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Database Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -27,8 +24,6 @@ def get_db():
 def serve_homepage():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
-
-# ✅ API 1: Paginated & Sorted by Rating
 @app.get("/api/recipes", response_model=List[RecipeBase])
 def get_all_recipes(
     page: int = 1,
@@ -39,7 +34,6 @@ def get_all_recipes(
     recipes = db.query(Recipe).order_by(desc(Recipe.rating)).offset(offset).limit(limit).all()
     return recipes
 
-# 🔍 Helper to apply filter based on operator
 def apply_operator(column, operator: str, value):
     if operator == ">":
         return column > value
@@ -54,14 +48,13 @@ def apply_operator(column, operator: str, value):
     else:
         return None
 
-# ✅ API 2: Search with Operators
 @app.get("/api/recipes/search", response_model=List[RecipeBase])
 def search_recipes(
     title: Optional[str] = None,
     cuisine: Optional[str] = None,
-    rating: Optional[str] = None,       # e.g. '>=4.5'
-    total_time: Optional[str] = None,   # e.g. '<=60'
-    calories: Optional[str] = None,     # e.g. '<=400'
+    rating: Optional[str] = None,       
+    total_time: Optional[str] = None,   
+    calories: Optional[str] = None,     
     db: Session = Depends(get_db)
 ):
     query = db.query(Recipe)
